@@ -153,7 +153,6 @@
     <ClInclude Include="External\stb_image_write.h" />
     <ClInclude Include="External\stb_perlin.h" />
     <ClInclude Include="Noise.h" />
-    <ClInclude Include="Player.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="World.h" />

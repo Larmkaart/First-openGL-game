@@ -18,8 +18,6 @@
 #include "Camera.h"
 #include "World.h"
 #include "Noise.h"
-#include "Player.h"
-#include "Physics.h"
 
 #include "External/stb_image.h"
 #include "External/stb_image_write.h"
@@ -30,8 +28,6 @@ using namespace glm;
 
 unsigned int width = 800;
 unsigned int height = 600;
-
-const float TIME_STEP = 1 / 60.0f; // 60fps
 
 int chunkRenderDistance = 15;
 int maxChunksPerFrame = 5;
@@ -47,7 +43,6 @@ void generateTexture(unsigned int* target, const char* filePath, GLenum textureD
 
 
 Camera camera(vec3(0.0f, 0.0f, 3.0f));
-//Player player(camera);
 float lastX = width / 2.0f;
 float lastY = height / 2.0f;
 bool firstMouse = true;
@@ -58,23 +53,6 @@ float lastFrame = 0.0f;
 
 int main()
 {
-	/*vec3 a = vec3(-50, 0, 0);
-	vec3 b = vec3(157, -23, 0);
-	vec3 c = vec3(74, 138, 0);
-	Sphere sphere;
-	sphere.r = 35;
-	sphere.position = vec3(140, 60, 0);
-	vec3 point = vec3(0);
-	int result = Physics::TestSphereTriangle(sphere, a, b, c, point);
-
-	std::cout << result;
-
-
-	return 1;
-
-	*/  // Just some testing
-
-
 	if (!glfwInit())
 	{
 		std::cout << "Failed to initialise GLFW" << std::endl;
@@ -123,15 +101,12 @@ int main()
 
 	World world;
 
-	PhysicsEngine engine;
-
-
-	unsigned int noiseMap;
-	glGenTextures(1, &noiseMap);
-	generateTexture(&noiseMap, "Textures/grass.png");
+	unsigned int grassTexture;
+	glGenTextures(1, &grassTexture);
+	generateTexture(&grassTexture, "Textures/grass.png");
 
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE, noiseMap);
+	glBindTexture(GL_TEXTURE, grassTexture);
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
@@ -142,8 +117,6 @@ int main()
 		float currentFrame = (float)glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
-
-		engine.update(deltaTime);
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -164,7 +137,7 @@ int main()
 		ivec2 cameraChunk = vec2(
 			round((camera.Position.x / world.vertexScale) / world.ChunkSize),
 			round((camera.Position.z / world.vertexScale) / world.ChunkSize)
-			);
+		);
 
 		glActiveTexture(GL_TEXTURE0);
 
