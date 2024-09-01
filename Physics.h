@@ -39,7 +39,7 @@ public:
 };
 
 
-static class Physics
+class Physics
 {
 public:
 	// See file:///C:/Users/Lenovo/Downloads/Christer_Ericson-Real-Time_Collision_Detection-EN.pdf P. 179 for possible optimisation

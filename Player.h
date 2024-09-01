@@ -1,5 +1,6 @@
 #ifndef PLAYER_H
 #define PLAYER_H
+#include "Physics.h"
 
 class Player
 {
@@ -27,13 +28,13 @@ public:
 	void ClearColliders() { playerColliders.clear(); }
 
 private:
-	PhysicsEngine engine;
+	//PhysicsEngine engine;
 	void processCollision()
 	{
-		ivec2 chunkPos = { 
-			round((camera.Position.x / world.vertexScale) / world.ChunkSize),
-			round((camera.Position.z / world.vertexScale) / world.ChunkSize) 
-		}
+		//ivec2 chunkPos = { 
+			//round((camera.Position.x / world.vertexScale) / world.ChunkSize),
+			//round((camera.Position.z / world.vertexScale) / world.ChunkSize) 
+		//}
 	}
 	void collideWithMesh(Mesh mesh)
 	{

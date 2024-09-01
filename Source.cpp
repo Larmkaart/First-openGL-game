@@ -58,7 +58,7 @@ float lastFrame = 0.0f;
 
 int main()
 {
-	vec3 a = vec3(-50, 0, 0);
+	/*vec3 a = vec3(-50, 0, 0);
 	vec3 b = vec3(157, -23, 0);
 	vec3 c = vec3(74, 138, 0);
 	Sphere sphere;
@@ -71,6 +71,10 @@ int main()
 
 
 	return 1;
+
+	*/  // Just some testing
+
+
 	if (!glfwInit())
 	{
 		std::cout << "Failed to initialise GLFW" << std::endl;
