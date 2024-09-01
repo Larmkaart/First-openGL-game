@@ -13,13 +13,63 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Shader Files">
+      <UniqueIdentifier>{a7479979-3ef7-4b07-a5a7-ee6541323287}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Generator Files">
+      <UniqueIdentifier>{1725006c-66ad-4333-bf3a-18b90e735683}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="glad.c">
+    <ClCompile Include="External\stb.cpp">
       <Filter>Resource Files</Filter>
     </ClCompile>
+    <ClCompile Include="External\glad.c">
+      <Filter>Resource Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Camera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="World.h">
+      <Filter>Generator Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Shader.h">
+      <Filter>Shader Files</Filter>
+    </ClInclude>
+    <ClInclude Include="External\stb_perlin.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="External\stb_image_write.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="External\stb_image.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Noise.h">
+      <Filter>Generator Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Physics.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\Shader.frag">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="Shaders\Shader.vert">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="cpp.hint" />
   </ItemGroup>
 </Project>
