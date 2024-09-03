@@ -40,7 +40,7 @@ void framebuffer_size_callback(GLFWwindow* window, int _width, int _height);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void generateTexture(unsigned int* target, const char* filePath, GLenum textureDepth = GL_TEXTURE0, GLenum wrapMode = GL_REPEAT, GLenum minFiter = GL_LINEAR_MIPMAP_LINEAR, GLenum magFilter = GL_LINEAR);
-
+int isInView(mat4 view, mat4 proj, vec3 worldPos);
 
 Camera camera(vec3(0.0f, 0.0f, 3.0f));
 float lastX = width / 2.0f;
@@ -122,7 +122,7 @@ int main()
 
 		shader.use();
 
-		mat4 projection = perspective(radians(camera.Zoom), static_cast<float>(width / height), 0.1f, 1000.0f);
+		mat4 projection = perspective(radians(camera.Zoom), static_cast<float>(width / height), 0.1f, 10000.0f);
 		mat4 view = camera.GetViewMatrix();
 		shader.setMat4("projection", projection);
 		shader.setMat4("view", view);
@@ -141,12 +141,24 @@ int main()
 
 		glActiveTexture(GL_TEXTURE0);
 
+		int chunkCount = 0;
+		float chunkSize = world.vertexScale * world.ChunkSize;
+
 		for (int y = -chunkRenderDistance; y <= chunkRenderDistance; y++)
 		{
 			for (int x = -chunkRenderDistance; x <= chunkRenderDistance; x++)
 			{
 				int chunkX = x + cameraChunk.x;
 				int chunkY = y + cameraChunk.y;
+
+				if (!firstRender)
+				{
+					if ((!isInView(view, projection, vec3(chunkX, 0, chunkY) * chunkSize)
+						&& !isInView(view, projection, vec3(chunkX + 1, 0, chunkY) * chunkSize)
+						&& !isInView(view, projection, vec3(chunkX, 0, chunkY + 1) * chunkSize)
+						&& !isInView(view, projection, vec3(chunkX + 1, 0, chunkY + 1) * chunkSize))) continue;
+
+				}
 
 				// Look up the chunk
 				Chunk* currentChunk = world.Chunks[Chunk::chunkHash(chunkX, chunkY)];
@@ -181,10 +193,13 @@ int main()
 
 				// If the chunk is loaded, draw it
 				currentChunk->surfaceMesh.Draw(shader);
+				chunkCount++;
 
 				//Chunk::saveChunk(currentChunk); Save the chunk to a file (still too laggy to be useful)
 			}
 		}
+
+		std::cout << "Chunks rendered: " << chunkCount <<  " fps: " << 1 / deltaTime << std::endl;
 
 		firstRender = false;
 		bool didRender = false;
@@ -290,6 +305,16 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
 	camera.ProcessMouseScroll(static_cast<float>(yoffset));
+}
+
+int isInView(mat4 view, mat4 proj, vec3 worldPos)
+{
+	vec4 screenPos = proj * view * vec4(worldPos, 1.0f);
+	if (screenPos.w == 0) return 0; // Div by zero prevention
+	screenPos /= screenPos.w;
+	return (screenPos.x >= -1.2f && screenPos.x <= 1.2f) // Within x bounds?
+		&& (screenPos.y >= -1.2f && screenPos.y <= 1.2f); // Within y bounds?
+		//&& (screenPos.z >= -1.2f && screenPos.z <= 1.0f); // Within z bounds?
 }
 
 void generateTexture(unsigned int* target, const char* filePath, GLenum textureDepth, GLenum wrapMode, GLenum minFiter, GLenum magFilter)

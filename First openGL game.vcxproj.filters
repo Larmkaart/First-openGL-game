@@ -56,9 +56,6 @@
     <ClInclude Include="Noise.h">
       <Filter>Generator Files</Filter>
     </ClInclude>
-    <ClInclude Include="Physics.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\Shader.frag">

@@ -148,7 +148,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
-    <ClInclude Include="Physics.h" />
     <ClInclude Include="External\stb_image.h" />
     <ClInclude Include="External\stb_image_write.h" />
     <ClInclude Include="External\stb_perlin.h" />

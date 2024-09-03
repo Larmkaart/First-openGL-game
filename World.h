@@ -33,12 +33,12 @@ public:
 	World()
 	{
 		noiseScale = 50.0f;
-		octaves = 8;
+		octaves = 4;
 		persistance = 0.5f;
 		lacunarity = 2.0f;
 		heightScale = 20.0f;
-		ChunkSize = 16;
-		vertexScale = 10.0f;
+		ChunkSize = 32;
+		vertexScale = 5.0f;
 
 		if (ChunkSize % 2 != 0)
 			ChunkSize++; // Ensure ChunkSize is even
