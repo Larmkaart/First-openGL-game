@@ -18,6 +18,7 @@
 #include "Camera.h"
 #include "World.h"
 #include "Noise.h"
+#include "Terrain.h"
 
 #include "External/stb_image.h"
 #include "External/stb_image_write.h"
@@ -29,12 +30,9 @@ using namespace glm;
 unsigned int width = 800;
 unsigned int height = 600;
 
-int chunkRenderDistance = 15;
-int maxChunksPerFrame = 5;
-bool firstRender = true;
-list<ivec2> chunkQueue;
-
+/* Function definitions */
 void processInput(GLFWwindow* window);
+GLFWwindow* createWindow(const char* title);
 void error_callback(int error, const char* description);
 void framebuffer_size_callback(GLFWwindow* window, int _width, int _height);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
@@ -42,71 +40,46 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void generateTexture(unsigned int* target, const char* filePath, GLenum textureDepth = GL_TEXTURE0, GLenum wrapMode = GL_REPEAT, GLenum minFiter = GL_LINEAR_MIPMAP_LINEAR, GLenum magFilter = GL_LINEAR);
 int isInView(mat4 view, mat4 proj, vec3 worldPos);
 
-Camera camera(vec3(0.0f, 0.0f, 3.0f));
-float lastX = width / 2.0f;
-float lastY = height / 2.0f;
-bool firstMouse = true;
+/* Variables */
+const int chunkRenderDistance = 15;
+int maxChunksPerFrame = 5;
+int chunkCount = 0;
+bool firstRender = true;
+list<ivec2> chunkQueue;
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
+Camera camera(vec3(0.0f, 200.0f, 0.0f));
+float lastX = width / 2.0f;
+float lastY = height / 2.0f;
+bool firstMouse = true;
+
+const float waterHeight = 145.0f;
+vec3 baseWaterColor = vec3(0.0);//vec3(0.0, 0.4, 0.7);
 
 int main()
 {
-	if (!glfwInit())
-	{
-		std::cout << "Failed to initialise GLFW" << std::endl;
+	/* Set up OpenGL and create a window */
+	GLFWwindow* window = createWindow("Window");
+
+	if (window == NULL)
 		return -1;
-	}
 
-	/* We are using openGL 3.3 core, the core profile removes deprecated functions */
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); 
-
-	GLFWwindow* window = glfwCreateWindow(width, height, "Window", NULL, NULL);
-
-	if (!window)
-	{
-		std::cout << "Failed to create window context" << std::endl;
-		glfwTerminate();
-		return -1;
-	}
-
-	glfwMakeContextCurrent(window);
-
-	glfwSetErrorCallback(error_callback);
-	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-	glfwSetCursorPosCallback(window, mouse_callback);
-	glfwSetScrollCallback(window, scroll_callback);
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-	 /* Here we make sure glad can access the openGL functions through glfw */
-	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-	{
-		std::cout << "Failed to load glad" << std::endl;
-		glfwTerminate();
-		return -1;
-	}
-
-	glViewport(0, 0, (GLsizei)width, (GLsizei)height);
-	glClearColor(0.53f, 0.81f, 0.92f, 1.0f);
-	glEnable(GL_DEPTH_TEST);
-
-	stbi_set_flip_vertically_on_load(true);
-
-	/* Here we set up our shader*/
+	/* Initialise shaders */
 	Shader shader("Shaders\\Shader.vert", "Shaders\\Shader.frag");
 	shader.use();
 
-	World world;
-
+	/* Initialise textures */
 	unsigned int grassTexture;
 	glGenTextures(1, &grassTexture);
 	generateTexture(&grassTexture, "Textures/grass.png");
+	shader.setInt("text", 0);
 
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE, grassTexture);
+	/* Misc. */
+	World world;
+	Mesh WaterMesh;
+	WaterMesh.drawMode = INDEX;
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
@@ -134,14 +107,14 @@ int main()
 
 		shader.setVec3("viewPos", camera.Position);
 
-		ivec2 cameraChunk = vec2(
-			round((camera.Position.x / world.vertexScale) / world.ChunkSize),
-			round((camera.Position.z / world.vertexScale) / world.ChunkSize)
-		);
+		shader.setInt("MinHeight", world.globalMinimum);
+		shader.setInt("MaxHeight", world.globalMaximum);
 
 		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, grassTexture);
 
-		int chunkCount = 0;
+		ivec2 cameraChunk = vec2(round((camera.Position.x / world.vertexScale) / world.ChunkSize), round((camera.Position.z / world.vertexScale) / world.ChunkSize));
+
 		float chunkSize = world.vertexScale * world.ChunkSize;
 
 		for (int y = -chunkRenderDistance; y <= chunkRenderDistance; y++)
@@ -151,16 +124,22 @@ int main()
 				int chunkX = x + cameraChunk.x;
 				int chunkY = y + cameraChunk.y;
 
-				if (!firstRender)
+				// To prevent loading in chunks outside of the view frustum, we cull them:
+				//if (!firstRender)
 				{
-					if ((!isInView(view, projection, vec3(chunkX, 0, chunkY) * chunkSize)
-						&& !isInView(view, projection, vec3(chunkX + 1, 0, chunkY) * chunkSize)
-						&& !isInView(view, projection, vec3(chunkX, 0, chunkY + 1) * chunkSize)
-						&& !isInView(view, projection, vec3(chunkX + 1, 0, chunkY + 1) * chunkSize))) continue;
+					vec3 newCamPos = camera.Position - camera.Front * (chunkSize * 2);
+					mat4 viewMatrix = glm::lookAt(newCamPos, newCamPos + camera.Front, camera.Up);
 
+					// Check whether or not any corners of the chunk fall in the viewport
+					if ((!isInView(viewMatrix, projection, vec3(chunkX, 0, chunkY) * chunkSize) && !isInView(viewMatrix, projection, vec3(chunkX + 1, 0, chunkY) * chunkSize)
+						&& !isInView(viewMatrix, projection, vec3(chunkX, 0, chunkY + 1) * chunkSize) && !isInView(viewMatrix, projection, vec3(chunkX + 1, 0, chunkY + 1) * chunkSize)))
+					{
+						continue;
+					}
 				}
 
-				// Look up the chunk
+				// Look up the chunk in the preloaded chunk table
+				// We generate an unique ChunkHash ID for each chunk
 				Chunk* currentChunk = world.Chunks[Chunk::chunkHash(chunkX, chunkY)];
 				
 				// Check if the chunk is preloaded
@@ -169,13 +148,16 @@ int main()
 					// Make sure first render frame starts with generating all the chunks
 					if (firstRender)
 					{
-						currentChunk = new Chunk(world, ivec2(chunkX, chunkY)); // If the chunk doesn't exist, generate it
+						currentChunk = new Chunk(&world, ivec2(chunkX, chunkY)); // If the chunk doesn't exist, generate it
 						world.Chunks[currentChunk->chunkID] = currentChunk;
 						continue;
 					}
 
 					bool skip = false;
-					// If not, push it unto the queue
+
+					// If not preloaded, push it unto the queue (if it's not already there)
+
+					// Check queue for duplicates
 					for (ivec2 pos : chunkQueue)
 					{
 						if (pos == ivec2(chunkX, chunkY))
@@ -185,8 +167,11 @@ int main()
 						}
 					}
 
+					// If it's not in the queue, add it.
 					if (!skip)
 						chunkQueue.push_back(ivec2(chunkX, chunkY));
+
+					// Note that we just push the chunk location onto the queue, not the entire chunk
 
 					continue;
 				}
@@ -195,16 +180,16 @@ int main()
 				currentChunk->surfaceMesh.Draw(shader);
 				chunkCount++;
 
-				//Chunk::saveChunk(currentChunk); Save the chunk to a file (still too laggy to be useful)
+				//Chunk::saveChunk(currentChunk);// Save the chunk to a file (still too laggy to be useful)
 			}
 		}
 
-		std::cout << "Chunks rendered: " << chunkCount <<  " fps: " << 1 / deltaTime << std::endl;
+		std::cout << "Chunks rendered: " << chunkCount <<  " fps: " << 1 / deltaTime << " Min: " << world.globalMinimum << " Max:" << world.globalMaximum << std::endl;
 
 		firstRender = false;
 		bool didRender = false;
 
-		// Create chunks from the chunk queue
+		// Generate chunks from chunk queue
 		for (int i = 0; i < maxChunksPerFrame; i++)
 		{
 			if (chunkQueue.size() < 1) break;
@@ -212,7 +197,7 @@ int main()
 			ivec2 chunkPos = chunkQueue.front();
 			chunkQueue.pop_front();
 
-			Chunk* currentChunk = new Chunk(world, chunkPos);
+			Chunk* currentChunk = new Chunk(&world, chunkPos);
 			world.Chunks[currentChunk->chunkID] = currentChunk;
 
 			//std::cout << currentChunk->chunkID << std::endl;
@@ -232,9 +217,32 @@ int main()
 				maxChunksPerFrame += chunkRenderDistance;
 			}
 
-			//std::cout << maxChunksPerFrame << "\t" << 1 / deltaTime << std::endl;
+			std::cout << "CPF: " << maxChunksPerFrame << "\t dT:" << 1 / deltaTime << std::endl;
 		}
-;		
+
+		float crds = chunkRenderDistance * chunkSize;
+		float ccsx = cameraChunk.x * chunkSize;
+		float ccsy = cameraChunk.y * chunkSize;
+		
+		float waterVertices[] = {
+			ccsx + crds, waterHeight, ccsy + crds,  0, 0, 0,   0, 0,
+			ccsx + crds, waterHeight, ccsy - crds,  0, 0, 0,   0, 0,
+			ccsx - crds, waterHeight, ccsy - crds,  0, 0, 0,   0, 0,
+			ccsx - crds, waterHeight, ccsy + crds,  0, 0, 0,   0, 0
+		};
+
+		unsigned int waterIndices[]
+		{
+			0, 1, 3, // first triangle
+			1, 2, 3  // second triangle
+		};
+
+		shader.use();
+		WaterMesh.DumpVertexArray(waterVertices, sizeof(waterVertices));
+		WaterMesh.DumpIndexArray(waterIndices, sizeof(waterIndices));
+		WaterMesh.Start();
+		WaterMesh.Draw(shader);
+
 		/* GLFW works using 2 buffers: a display buffer and a hidden buffer. This is to prevent screen tearing */
 		glfwSwapBuffers(window);
 
@@ -243,6 +251,53 @@ int main()
 
 	glfwTerminate();
 	return 0;
+}
+
+GLFWwindow* createWindow(const char* title)
+{
+	if (!glfwInit())
+	{
+		std::cout << "Failed to initialise GLFW" << std::endl;
+		return NULL;
+	}
+
+	/* We are using openGL 3.3 core, the core profile removes deprecated functions */
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+	GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
+
+	if (!window)
+	{
+		std::cout << "Failed to create window context" << std::endl;
+		glfwTerminate();
+		return NULL;
+	}
+
+	glfwMakeContextCurrent(window);
+
+	glfwSetErrorCallback(error_callback);
+	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+	glfwSetCursorPosCallback(window, mouse_callback);
+	glfwSetScrollCallback(window, scroll_callback);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+	/* Here we make sure glad can access the openGL functions through glfw */
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+	{
+		std::cout << "Failed to load glad" << std::endl;
+		glfwTerminate();
+		return NULL;
+	}
+
+	glViewport(0, 0, (GLsizei)width, (GLsizei)height);
+	glClearColor(0.53f, 0.81f, 0.92f, 1.0f);
+	glEnable(GL_DEPTH_TEST);
+
+	stbi_set_flip_vertically_on_load(true);
+
+	return window;
 }
 
 void processInput(GLFWwindow* window)
@@ -312,9 +367,9 @@ int isInView(mat4 view, mat4 proj, vec3 worldPos)
 	vec4 screenPos = proj * view * vec4(worldPos, 1.0f);
 	if (screenPos.w == 0) return 0; // Div by zero prevention
 	screenPos /= screenPos.w;
-	return (screenPos.x >= -1.2f && screenPos.x <= 1.2f) // Within x bounds?
-		&& (screenPos.y >= -1.2f && screenPos.y <= 1.2f); // Within y bounds?
-		//&& (screenPos.z >= -1.2f && screenPos.z <= 1.0f); // Within z bounds?
+	return (screenPos.x >= -1.0f && screenPos.x <= 1.0f) // Within x bounds?
+		&& (screenPos.y >= -1.0f && screenPos.y <= 1.0f) // Within y bounds?
+		&& (screenPos.z >= -1.0f && screenPos.z <= 1.0f); // Within z bounds?
 }
 
 void generateTexture(unsigned int* target, const char* filePath, GLenum textureDepth, GLenum wrapMode, GLenum minFiter, GLenum magFilter)

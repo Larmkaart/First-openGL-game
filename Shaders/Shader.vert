@@ -6,6 +6,7 @@ layout (location = 2) in vec2 aTexCoords;
 out vec2 TexCoords;
 out vec4 VertexCoords;
 out vec3 VertexNormal;
+out float WaterLevel;
 
 uniform mat4 view;
 uniform mat4 model;
@@ -13,8 +14,9 @@ uniform mat4 projection;
 
 void main()
 {
+    WaterLevel = 0.0f;
     TexCoords = aTexCoords;    
     VertexNormal = normalize(mat3(transpose(inverse(model))) * aNormal);
-    VertexCoords = vec4(aPos, 1.0);
-    gl_Position = projection * view * model * vec4(aPos, 1.0);
+    VertexCoords = (aPos.y <= WaterLevel) ? vec4(aPos.x, WaterLevel - 5.0f, aPos.z, 1.0f) : vec4(aPos, 1.0f);
+    gl_Position = projection * view * model * VertexCoords;
 }

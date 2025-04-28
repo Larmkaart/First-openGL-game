@@ -154,6 +154,7 @@
     <ClInclude Include="Noise.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Shader.h" />
+    <ClInclude Include="Terrain.h" />
     <ClInclude Include="World.h" />
   </ItemGroup>
   <ItemGroup>

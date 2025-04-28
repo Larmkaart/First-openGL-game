@@ -5,9 +5,23 @@
 class Noise
 {
 public:
-	static float* GenerateNoiseMap(int mapWidth, int mapHeight, vec2 offset, int seed, float scale, int octaves, float persistance, float lacunarity)
+	struct NoiseMap2D
 	{
-		float* noiseMap = new float [mapWidth * mapHeight];
+		float* map;
+		
+		float min = std::numeric_limits<float>::max();
+		float max = std::numeric_limits<float>::min();
+
+		NoiseMap2D(int width, int height)
+		{
+			map = new float[width * height];
+		}
+	};
+
+
+	static NoiseMap2D* GenerateNoiseMap(int mapWidth, int mapHeight, vec2 offset, int seed, float scale, int octaves, float persistance, float lacunarity, float influenceScale)
+	{
+		NoiseMap2D* noiseMap = new NoiseMap2D(mapWidth, mapHeight);
 
 		srand(seed);
 
@@ -32,9 +46,6 @@ public:
 			scale = 0.0001f;
 		}
 
-		float minValue = std::numeric_limits<float>::max();
-		float maxValue = std::numeric_limits<float>::min();
-
 		float halfWidth = mapWidth / 2.0f; // Make sure the map zooms into the centre
 		float halfHeight = mapHeight / 2.0f;
 
@@ -49,56 +60,44 @@ public:
 
 				float result = 0.0f;
 				float influence = 0.0f;
+				float weight = 1.0f;
 
 				for (int octave = 0; octave < octaves; octave++)
 				{
 					float sampleX = (x + octaveOffsets[octave].x)  / scale * frequency;
 					float sampleY = (y + octaveOffsets[octave].y) / scale * frequency;
 
-					float perlinValue = stb_perlin_noise3(sampleX, 0, sampleY, 0, 0, 0);
+					float perlinValue = 1 + stb_perlin_noise3(sampleX, 0, sampleY, 0, 0, 0) / 2;
 
+					perlinValue *= perlinValue;
+					perlinValue *= weight;
+					weight = perlinValue;
 					
-					float h = 0.001;
-					float dX = stb_perlin_noise3(sampleX + h, 0, sampleY, 0, 0, 0) - perlinValue;
-					float dY = stb_perlin_noise3(sampleX, 0, sampleY + h, 0, 0, 0) - perlinValue;
-
-					dX /= h;
-					dY /= h;
-
-					vec2 gradient = vec2(dX, dY);
-					influence += 1 / (1 + length(gradient) * 2);
-					
-
-					result += perlinValue * amplitude * influence;
+					// Ensure the influence of each octave decreases 
+					result += perlinValue * amplitude * 20.0f;
 
 					amplitude *= persistance;
 					frequency *= lacunarity;
 				}
 
-				if (result > maxValue)
-					maxValue = result;
-				else if (result < minValue)
-					minValue = result;
+				if (result > noiseMap->max)
+					noiseMap->max = result;
+				if (result < noiseMap->min)
+					noiseMap->min = result;
 
-				noiseMap[x + y * mapWidth] = result;
+				noiseMap->map[x + y * mapWidth] = result;
+				//std::cout << noiseMap->map[x + y * mapWidth] << std::endl;
 			}
 		}
 
-		/*
-		for (int y = 0; y < mapHeight; y++)
-		{
-			for (int x = 0; x < mapWidth; x++)
-			{
-				noiseMap[x + y * mapWidth] = noiseMap[x + y * mapWidth] / (maxHeight / 2.0f); // (noiseMap[x + y * mapWidth] + 1.0f) / (2.0f * maxHeight);
-			}
-		}
-		*/
+		//std::cout << "Min: " << noiseMap->min << " Max: " << noiseMap->max << std::endl;
+
 		return noiseMap;
 	}
 
 	static float LevelOfDetail(float value)
 	{
-		return value * value;
+		return value;// abs(value * value);// *(value / abs(value));
 		//return 0.6f * value * value * value * value + 0.4f * value;
 	}
 };
